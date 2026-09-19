@@ -1,0 +1,44 @@
+# ==========================================
+# Environment Variables & Secrets (CRITICAL)
+# ==========================================
+.env
+.env.local
+.env.*.local
+*.env
+
+# ==========================================
+# Node.js & Frontend Dependencies
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================================
+# Build Outputs & Bundler Caches
+# ==========================================
+dist/
+build/
+.vite/
+.turbo/
+
+# ==========================================
+# C Language Compiler & Binary Outputs
+# ==========================================
+*.exe
+*.o
+*.obj
+*.out
+*.dll
+*.so
+*.dylib
+*.pdb
+
+# ==========================================
+# Operating System & IDE Clutter
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
