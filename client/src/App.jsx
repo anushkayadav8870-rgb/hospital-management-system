@@ -14,6 +14,7 @@ import Patients from './pages/patients/Patients';
 import Doctors from './pages/doctors/Doctors';
 import Appointments from './pages/appointments/Appointments';
 import MedicalRecords from './pages/emr/MedicalRecords';
+import Prescriptions from './pages/prescriptions/Prescriptions';
 import Login from './pages/auth/Login';
 
 function AuthenticatedLayout({ children }) {
@@ -70,6 +71,15 @@ export default function App() {
             element={
               <AuthenticatedLayout>
                 <MedicalRecords />
+              </AuthenticatedLayout>
+            }
+          />
+
+          <Route
+            path="/prescriptions"
+            element={
+              <AuthenticatedLayout>
+                <Prescriptions />
               </AuthenticatedLayout>
             }
           />
