@@ -16,6 +16,7 @@ const patientRoutes = require('./routes/patientRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const doctorRoutes = require('./routes/doctorRoutes');
 const appointmentRoutes = require('./routes/appointmentRoutes');
+const recordRoutes = require('./routes/recordRoutes');
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/records', recordRoutes);
 
 // -----------------------------------------------
 // Error Handling Pipeline
@@ -62,8 +64,8 @@ app.listen(PORT, () => {
   console.log('==============================================');
   console.log('  PulseCare HMS — API Server Operational');
   console.log('==============================================');
-  console.log(`  Health       : http://localhost:${PORT}/api/health`);
-  console.log(`  Appointments : http://localhost:${PORT}/api/appointments`);
-  console.log(`  Env          : ${process.env.NODE_ENV || 'development'}`);
+  console.log(`  Health   : http://localhost:${PORT}/api/health`);
+  console.log(`  EMR      : http://localhost:${PORT}/api/records`);
+  console.log(`  Env      : ${process.env.NODE_ENV || 'development'}`);
   console.log('==============================================');
 });

@@ -3,11 +3,6 @@
 //
 // CONCEPT: React Router & Application Structure
 // =============================================
-// React Router manages navigation between views:
-//   - <BrowserRouter> keeps UI in sync with browser URL
-//   - <Routes> renders the first <Route> that matches URL
-//   - Layout wrapper embeds Sidebar & Navbar on internal pages
-// =============================================
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -18,9 +13,9 @@ import Dashboard from './pages/dashboard/Dashboard';
 import Patients from './pages/patients/Patients';
 import Doctors from './pages/doctors/Doctors';
 import Appointments from './pages/appointments/Appointments';
+import MedicalRecords from './pages/emr/MedicalRecords';
 import Login from './pages/auth/Login';
 
-// Helper component to wrap authenticated pages with Layout
 function AuthenticatedLayout({ children }) {
   return <Layout>{children}</Layout>;
 }
@@ -33,7 +28,7 @@ export default function App() {
           {/* Public Authentication Route */}
           <Route path="/login" element={<Login />} />
 
-          {/* Authenticated Application Routes (Wrapped in Layout) */}
+          {/* Authenticated Application Routes */}
           <Route
             path="/dashboard"
             element={
@@ -70,7 +65,16 @@ export default function App() {
             }
           />
 
-          {/* Catch-all redirect to /dashboard */}
+          <Route
+            path="/records"
+            element={
+              <AuthenticatedLayout>
+                <MedicalRecords />
+              </AuthenticatedLayout>
+            }
+          />
+
+          {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Router>
