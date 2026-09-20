@@ -10,14 +10,14 @@ INSERT INTO departments (name, description, location_floor) VALUES
 ('Neurology', 'Brain, spinal cord, and nerve health disorders.', 'Floor 4 - Wing C'),
 ('Orthopedics', 'Musculoskeletal system, bones, joints, and ligaments.', 'Floor 1 - Wing A');
 
--- 2. Users (Passwords hashed using bcrypt for "password123": $2a$10$w8u7eR/4L/O1uA8O6y8b9O3U.Z0K...)
+-- 2. Users (Passwords hashed using bcrypt for "password123")
 INSERT INTO users (email, password_hash, role, first_name, last_name, phone) VALUES
-('admin@pulsecare.com', '$2a$10$7rV.zM1R.N0E9v.v/v1u.O0/8.u8v1u.O0/8.u8v1u.O0/8', 'ADMIN', 'Arthur', 'Pendelton', '+1 555-0100'),
-('dr.jenkins@pulsecare.com', '$2a$10$7rV.zM1R.N0E9v.v/v1u.O0/8.u8v1u.O0/8.u8v1u.O0/8', 'DOCTOR', 'Sarah', 'Jenkins', '+1 555-0101'),
-('dr.chen@pulsecare.com', '$2a$10$7rV.zM1R.N0E9v.v/v1u.O0/8.u8v1u.O0/8.u8v1u.O0/8', 'DOCTOR', 'Robert', 'Chen', '+1 555-0102'),
-('reception@pulsecare.com', '$2a$10$7rV.zM1R.N0E9v.v/v1u.O0/8.u8v1u.O0/8.u8v1u.O0/8', 'RECEPTIONIST', 'Clara', 'Oswald', '+1 555-0103'),
-('eleanor.vance@email.com', '$2a$10$7rV.zM1R.N0E9v.v/v1u.O0/8.u8v1u.O0/8.u8v1u.O0/8', 'PATIENT', 'Eleanor', 'Vance', '+1 555-0192'),
-('marcus.brody@email.com', '$2a$10$7rV.zM1R.N0E9v.v/v1u.O0/8.u8v1u.O0/8.u8v1u.O0/8', 'PATIENT', 'Marcus', 'Brody', '+1 555-0144');
+('admin@pulsecare.com', '$2b$10$By9Nsp9DIt2tfCgjP1gye.tk.Y55ElAah4K7Oyh0B1ICeWPr1BNWS', 'ADMIN', 'Arthur', 'Pendelton', '+1 555-0100'),
+('dr.jenkins@pulsecare.com', '$2b$10$By9Nsp9DIt2tfCgjP1gye.tk.Y55ElAah4K7Oyh0B1ICeWPr1BNWS', 'DOCTOR', 'Sarah', 'Jenkins', '+1 555-0101'),
+('dr.chen@pulsecare.com', '$2b$10$By9Nsp9DIt2tfCgjP1gye.tk.Y55ElAah4K7Oyh0B1ICeWPr1BNWS', 'DOCTOR', 'Robert', 'Chen', '+1 555-0102'),
+('reception@pulsecare.com', '$2b$10$By9Nsp9DIt2tfCgjP1gye.tk.Y55ElAah4K7Oyh0B1ICeWPr1BNWS', 'RECEPTIONIST', 'Clara', 'Oswald', '+1 555-0103'),
+('eleanor.vance@email.com', '$2b$10$By9Nsp9DIt2tfCgjP1gye.tk.Y55ElAah4K7Oyh0B1ICeWPr1BNWS', 'PATIENT', 'Eleanor', 'Vance', '+1 555-0192'),
+('marcus.brody@email.com', '$2b$10$By9Nsp9DIt2tfCgjP1gye.tk.Y55ElAah4K7Oyh0B1ICeWPr1BNWS', 'PATIENT', 'Marcus', 'Brody', '+1 555-0144');
 
 -- 3. Doctors
 INSERT INTO doctors (user_id, department_id, specialization, qualification, consultation_fee, bio) VALUES
