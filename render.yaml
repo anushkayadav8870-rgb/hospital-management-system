@@ -1,0 +1,49 @@
+# =============================================
+# render.yaml — Render Infrastructure Blueprint
+# PulseCare Hospital Management System
+# =============================================
+# Docs: https://render.com/docs/blueprint-spec
+#
+# This file defines the backend Web Service only.
+# Frontend (client) will be deployed separately to Vercel in Step 7.
+# =============================================
+
+services:
+  - type: web
+    name: pulsecare-hms-api
+    runtime: node
+    region: singapore          # closest to Neon AP-Southeast-1
+    plan: free                 # Render free tier
+
+    # Root of the Node.js server (relative to repo root)
+    rootDir: server
+
+    # Build: install production dependencies only
+    buildCommand: npm install --omit=dev
+
+    # Start: run the Express server
+    startCommand: npm start
+
+    # Health check: Render uses this to confirm the service is up
+    healthCheckPath: /api/health
+
+    # Environment variable KEYS only — values set in Render Dashboard
+    # Never put real secrets in this file (it is committed to GitHub)
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: 10000              # Render assigns this port automatically; keep in sync
+
+      - key: JWT_SECRET
+        generateValue: true       # Render auto-generates a secure random secret
+
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+      - key: DATABASE_URL
+        sync: false               # Marks as "manually set in dashboard" — you paste Neon URL
+
+      - key: CLIENT_URL
+        sync: false               # You paste your future Vercel URL here (Step 7)
