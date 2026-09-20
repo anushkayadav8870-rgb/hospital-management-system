@@ -167,7 +167,7 @@ exports.createDoctor = asyncHandler(async (req, res) => {
     `INSERT INTO doctors (user_id, department_id, specialization, qualification, consultation_fee, bio)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id, specialization, qualification, consultation_fee, bio, created_at`,
-    [userId, departmentId || null, specialization, qualification, consultationFee || 100.00, bio || null]
+    [userId, departmentId ? parseInt(departmentId, 10) : null, specialization, qualification, consultationFee ? parseFloat(consultationFee) : 100.00, bio || null]
   );
 
   const doc = doctorResult.rows[0];

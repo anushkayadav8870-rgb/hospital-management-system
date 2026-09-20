@@ -3,10 +3,11 @@
 // Doctor Directory & Staff Management View
 // =============================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import DoctorModal from '../../components/doctors/DoctorModal';
+import { doctorService } from '../../services/doctorService';
 
 const initialSampleDoctors = [
   {
@@ -54,11 +55,30 @@ const initialSampleDoctors = [
 ];
 
 export default function Doctors() {
-  const [doctors, setDoctors] = useState(initialSampleDoctors);
+  const [doctors, setDoctors] = useState(() => {
+    const cached = localStorage.getItem('hms_doctors_cache');
+    return cached ? JSON.parse(cached) : initialSampleDoctors;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+
+  const fetchDoctors = async () => {
+    try {
+      const res = await doctorService.getDoctors();
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setDoctors(res.data);
+        localStorage.setItem('hms_doctors_cache', JSON.stringify(res.data));
+      }
+    } catch (err) {
+      console.warn('API fetch warning, retaining local cache:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchDoctors();
+  }, []);
 
   const filteredDoctors = doctors.filter((doc) => {
     const matchesSearch =
@@ -78,10 +98,16 @@ export default function Doctors() {
     setIsModalOpen(true);
   };
 
-  const handleSaveDoctor = (formData) => {
+  const handleSaveDoctor = async (formData) => {
     if (selectedDoctor) {
-      setDoctors(
-        doctors.map((d) =>
+      try {
+        const res = await doctorService.updateDoctor(selectedDoctor.id, formData);
+        if (res.success) {
+          await fetchDoctors();
+        }
+      } catch (err) {
+        console.warn('Update via API failed, updating local state:', err.message);
+        const updatedList = doctors.map((d) =>
           d.id === selectedDoctor.id
             ? {
                 ...d,
@@ -95,24 +121,41 @@ export default function Doctors() {
                 consultationFee: parseFloat(formData.consultationFee),
               }
             : d
-        )
-      );
+        );
+        setDoctors(updatedList);
+        localStorage.setItem('hms_doctors_cache', JSON.stringify(updatedList));
+      }
     } else {
-      const newDoc = {
-        id: Date.now(),
-        name: `Dr. ${formData.firstName} ${formData.lastName}`,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        specialization: formData.specialization,
-        qualification: formData.qualification,
-        consultationFee: parseFloat(formData.consultationFee),
-        department: { id: parseInt(formData.departmentId, 10), name: 'Cardiology', locationFloor: 'Floor 3' },
-        status: 'Available',
-        isActive: true,
-      };
-      setDoctors([newDoc, ...doctors]);
+      const deptNames = { '1': 'Cardiology', '2': 'Pediatrics', '3': 'Neurology', '4': 'Orthopedics' };
+      try {
+        const res = await doctorService.createDoctor(formData);
+        if (res.success) {
+          await fetchDoctors();
+        }
+      } catch (err) {
+        console.warn('Create via API failed, saving to local persistent cache:', err.message);
+        const newDoc = {
+          id: Date.now(),
+          name: `Dr. ${formData.firstName} ${formData.lastName}`,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          specialization: formData.specialization,
+          qualification: formData.qualification,
+          consultationFee: parseFloat(formData.consultationFee),
+          department: {
+            id: parseInt(formData.departmentId, 10),
+            name: deptNames[formData.departmentId] || 'Cardiology',
+            locationFloor: 'Floor 3',
+          },
+          status: 'Available',
+          isActive: true,
+        };
+        const updatedList = [newDoc, ...doctors];
+        setDoctors(updatedList);
+        localStorage.setItem('hms_doctors_cache', JSON.stringify(updatedList));
+      }
     }
 
     setIsModalOpen(false);
