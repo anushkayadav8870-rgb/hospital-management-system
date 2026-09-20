@@ -15,17 +15,27 @@
 
 const { Pool } = require('pg');
 
-// Initialize Pool with environment configuration
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  database: process.env.DB_NAME || 'hms_db',
-  user: process.env.DB_USER || 'hms_user',
-  password: process.env.DB_PASSWORD || 'hms_password',
-  max: 20, // Maximum number of open connections in pool
-  idleTimeoutMillis: 30000, // Close idle connections after 30 sec
-  connectionTimeoutMillis: 2000, // Return error if connection takes > 2 sec
-});
+// Initialize Pool with environment configuration (Supports discrete fields or single DATABASE_URL)
+const poolConfig = process.env.DATABASE_URL
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    }
+  : {
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      database: process.env.DB_NAME || 'hms_db',
+      user: process.env.DB_USER || 'hms_user',
+      password: process.env.DB_PASSWORD || 'hms_password',
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    };
+
+const pool = new Pool(poolConfig);
 
 // Event listener: Log unexpected pool errors
 pool.on('error', (err) => {
