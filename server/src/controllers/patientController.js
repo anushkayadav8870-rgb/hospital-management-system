@@ -5,6 +5,14 @@
 
 const asyncHandler = require('../middleware/asyncHandler');
 const db = require('../db');
+const {
+  isValidName,
+  isValidEmail,
+  isValidPhone,
+  isValidDOB,
+  isValidGender,
+  isValidBloodGroup,
+} = require('../utils/validators');
 
 // Helper function to auto-generate unique Medical Record Number (MRN)
 function generateMRN() {
@@ -118,20 +126,68 @@ exports.getPatientById = asyncHandler(async (req, res) => {
 exports.createPatient = asyncHandler(async (req, res) => {
   const { firstName, lastName, email, phone, dob, gender, bloodGroup, emergencyContact, address } = req.body;
 
+  // Required Field Checks
   if (!firstName || !lastName || !dob || !gender) {
     res.status(400);
-    throw new Error('Please provide required fields (firstName, lastName, dob, gender).');
+    throw new Error('Please provide required fields (First Name, Last Name, Date of Birth, Gender).');
   }
 
-  // 1. Create a associated user account for patient login
+  // Name Validation
+  if (!isValidName(firstName)) {
+    res.status(400);
+    throw new Error('First Name must contain only alphabetic characters, spaces, or hyphens (2-50 characters) and no numbers or symbols.');
+  }
+  if (!isValidName(lastName)) {
+    res.status(400);
+    throw new Error('Last Name must contain only alphabetic characters, spaces, or hyphens (2-50 characters) and no numbers or symbols.');
+  }
+
+  // Email Validation
+  if (email && !isValidEmail(email)) {
+    res.status(400);
+    throw new Error('Please provide a valid email address (e.g. patient@email.com).');
+  }
+
+  // Phone Validation
+  if (phone && !isValidPhone(phone)) {
+    res.status(400);
+    throw new Error('Please provide a valid phone number (7-15 digits).');
+  }
+
+  // Date of Birth Validation
+  if (!isValidDOB(dob)) {
+    res.status(400);
+    throw new Error('Date of Birth must be a valid past date within the last 120 years (future dates are not allowed).');
+  }
+
+  // Gender & Blood Group Validation
+  if (!isValidGender(gender)) {
+    res.status(400);
+    throw new Error('Gender must be Female, Male, or Other.');
+  }
+  if (bloodGroup && !isValidBloodGroup(bloodGroup)) {
+    res.status(400);
+    throw new Error('Invalid blood group specified.');
+  }
+
+  // Check email collision if email provided
+  if (email) {
+    const existingEmail = await db.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    if (existingEmail.rows.length > 0) {
+      res.status(400);
+      throw new Error('An account with this email address already exists.');
+    }
+  }
+
+  // 1. Create associated user account for patient login
   const generatedEmail = email || `patient_${Date.now()}@pulsecare.local`;
-  const defaultPasswordHash = '$2a$10$7rV.zM1R.N0E9v.v/v1u.O0/8.u8v1u.O0/8.u8v1u.O0/8'; // password123
+  const defaultPasswordHash = '$2b$10$By9Nsp9DIt2tfCgjP1gye.tk.Y55ElAah4K7Oyh0B1ICeWPr1BNWS'; // password123
 
   const userResult = await db.query(
     `INSERT INTO users (email, password_hash, role, first_name, last_name, phone)
      VALUES ($1, $2, 'PATIENT', $3, $4, $5)
      RETURNING id`,
-    [generatedEmail.toLowerCase(), defaultPasswordHash, firstName, lastName, phone || null]
+    [generatedEmail.toLowerCase(), defaultPasswordHash, firstName.trim(), lastName.trim(), phone ? phone.trim() : null]
   );
 
   const userId = userResult.rows[0].id;
@@ -142,7 +198,7 @@ exports.createPatient = asyncHandler(async (req, res) => {
     `INSERT INTO patients (user_id, mrn, date_of_birth, gender, blood_group, emergency_contact, address)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id, mrn, date_of_birth, gender, blood_group, emergency_contact, address, created_at`,
-    [userId, mrn, dob, gender, bloodGroup || 'Unknown', emergencyContact || null, address || null]
+    [userId, mrn, dob, gender, bloodGroup || 'Unknown', emergencyContact ? emergencyContact.trim() : null, address ? address.trim() : null]
   );
 
   const p = patientResult.rows[0];
@@ -153,9 +209,9 @@ exports.createPatient = asyncHandler(async (req, res) => {
     data: {
       id: p.id,
       mrn: p.mrn,
-      name: `${firstName} ${lastName}`,
-      firstName,
-      lastName,
+      name: `${firstName.trim()} ${lastName.trim()}`,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       email: generatedEmail,
       phone,
       dob: p.date_of_birth,
@@ -168,6 +224,7 @@ exports.createPatient = asyncHandler(async (req, res) => {
     },
   });
 });
+
 
 // @desc    Update patient profile details
 // @route   PUT /api/patients/:id

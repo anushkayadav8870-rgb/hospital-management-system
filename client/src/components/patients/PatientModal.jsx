@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import Button from '../common/Button';
+import { validateName, validateEmail, validatePhone, validateDOB } from '../../utils/validators';
 
 export default function PatientModal({ isOpen, onClose, onSave, patient = null }) {
   const [formData, setFormData] = useState({
@@ -52,17 +53,49 @@ export default function PatientModal({ isOpen, onClose, onSave, patient = null }
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.firstName || !formData.lastName || !formData.dob) {
-      setError('Please fill in required fields (First Name, Last Name, Date of Birth).');
+    // Comprehensive client-side validation
+    const firstNameErr = validateName(formData.firstName, 'First Name');
+    if (firstNameErr) {
+      setError(firstNameErr);
       return;
     }
 
-    onSave(formData);
+    const lastNameErr = validateName(formData.lastName, 'Last Name');
+    if (lastNameErr) {
+      setError(lastNameErr);
+      return;
+    }
+
+    const emailErr = validateEmail(formData.email);
+    if (emailErr) {
+      setError(emailErr);
+      return;
+    }
+
+    const phoneErr = validatePhone(formData.phone);
+    if (phoneErr) {
+      setError(phoneErr);
+      return;
+    }
+
+    const dobErr = validateDOB(formData.dob);
+    if (dobErr) {
+      setError(dobErr);
+      return;
+    }
+
+    try {
+      await onSave(formData);
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please check inputs.');
+    }
   };
+
+
 
   return (
     <div

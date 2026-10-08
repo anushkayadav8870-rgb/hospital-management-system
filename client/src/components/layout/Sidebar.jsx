@@ -36,10 +36,9 @@ const navItems = [
 ];
 
 const adminItems = [
-  { path: '/analytics',    label: 'Analytics',        icon: '📈' },
-  { path: '/users',        label: 'User Management',  icon: '👥' },
-  { path: '/departments',  label: 'Departments',      icon: '🏢' },
+  { path: '/db-viewer',     label: 'Database Viewer',   icon: '🗄️' },
 ];
+
 
 export default function Sidebar() {
   const { user, logout } = useAuth();

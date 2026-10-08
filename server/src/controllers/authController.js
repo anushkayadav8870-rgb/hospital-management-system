@@ -7,6 +7,12 @@ const bcrypt = require('bcryptjs');
 const asyncHandler = require('../middleware/asyncHandler');
 const db = require('../db');
 const generateToken = require('../utils/generateToken');
+const {
+  isValidName,
+  isValidEmail,
+  isValidPhone,
+  isValidPassword,
+} = require('../utils/validators');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -17,7 +23,32 @@ exports.registerUser = asyncHandler(async (req, res) => {
   // 1. Validation
   if (!email || !password || !firstName || !lastName) {
     res.status(400);
-    throw new Error('Please provide all required fields (email, password, firstName, lastName).');
+    throw new Error('Please provide all required fields (Email, Password, First Name, Last Name).');
+  }
+
+  if (!isValidName(firstName)) {
+    res.status(400);
+    throw new Error('First Name must contain only alphabetic characters, spaces, or hyphens (2-50 characters).');
+  }
+
+  if (!isValidName(lastName)) {
+    res.status(400);
+    throw new Error('Last Name must contain only alphabetic characters, spaces, or hyphens (2-50 characters).');
+  }
+
+  if (!isValidEmail(email)) {
+    res.status(400);
+    throw new Error('Please provide a valid email address.');
+  }
+
+  if (!isValidPassword(password)) {
+    res.status(400);
+    throw new Error('Password must be at least 6 characters long.');
+  }
+
+  if (phone && !isValidPhone(phone)) {
+    res.status(400);
+    throw new Error('Please provide a valid phone number (7-15 digits).');
   }
 
   // 2. Check if user already exists
@@ -39,7 +70,7 @@ exports.registerUser = asyncHandler(async (req, res) => {
     `INSERT INTO users (email, password_hash, role, first_name, last_name, phone)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id, email, role, first_name, last_name, phone, created_at`,
-    [email.toLowerCase(), passwordHash, userRole, firstName, lastName, phone || null]
+    [email.toLowerCase().trim(), passwordHash, userRole, firstName.trim(), lastName.trim(), phone ? phone.trim() : null]
   );
 
   const user = newUserResult.rows[0];
@@ -63,6 +94,7 @@ exports.registerUser = asyncHandler(async (req, res) => {
     },
   });
 });
+
 
 // @desc    Authenticate user & return JWT token
 // @route   POST /api/auth/login

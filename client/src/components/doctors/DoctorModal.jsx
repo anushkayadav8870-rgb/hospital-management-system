@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import Button from '../common/Button';
+import { validateName, validateEmail, validatePhone, validateAmount } from '../../utils/validators';
 
 export default function DoctorModal({ isOpen, onClose, onSave, doctor = null }) {
   const [formData, setFormData] = useState({
@@ -55,13 +56,49 @@ export default function DoctorModal({ isOpen, onClose, onSave, doctor = null }) 
     e.preventDefault();
     setError('');
 
-    if (!formData.firstName || !formData.lastName || !formData.specialization || !formData.qualification) {
-      setError('Please fill in required fields (First Name, Last Name, Specialization, Qualification).');
+    const firstNameErr = validateName(formData.firstName, 'First Name');
+    if (firstNameErr) {
+      setError(firstNameErr);
+      return;
+    }
+
+    const lastNameErr = validateName(formData.lastName, 'Last Name');
+    if (lastNameErr) {
+      setError(lastNameErr);
+      return;
+    }
+
+    const emailErr = validateEmail(formData.email);
+    if (emailErr) {
+      setError(emailErr);
+      return;
+    }
+
+    const phoneErr = validatePhone(formData.phone);
+    if (phoneErr) {
+      setError(phoneErr);
+      return;
+    }
+
+    if (!formData.specialization || !formData.specialization.trim()) {
+      setError('Specialization is required.');
+      return;
+    }
+
+    if (!formData.qualification || !formData.qualification.trim()) {
+      setError('Qualification is required.');
+      return;
+    }
+
+    const feeErr = validateAmount(formData.consultationFee, 'Consultation Fee');
+    if (feeErr) {
+      setError(feeErr);
       return;
     }
 
     onSave(formData);
   };
+
 
   return (
     <div

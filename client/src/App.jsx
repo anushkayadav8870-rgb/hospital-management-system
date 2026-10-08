@@ -16,6 +16,7 @@ import Appointments from './pages/appointments/Appointments';
 import MedicalRecords from './pages/emr/MedicalRecords';
 import Prescriptions from './pages/prescriptions/Prescriptions';
 import Billing from './pages/billing/Billing';
+import DatabaseViewer from './pages/admin/DatabaseViewer';
 import Login from './pages/auth/Login';
 
 function AuthenticatedLayout({ children }) {
@@ -94,6 +95,15 @@ export default function App() {
             }
           />
 
+          <Route
+            path="/db-viewer"
+            element={
+              <AuthenticatedLayout>
+                <DatabaseViewer />
+              </AuthenticatedLayout>
+            }
+          />
+
           {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
@@ -101,3 +111,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+

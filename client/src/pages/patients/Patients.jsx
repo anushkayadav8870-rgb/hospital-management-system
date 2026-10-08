@@ -16,12 +16,30 @@ const initialSamplePatients = [
 ];
 
 export default function Patients() {
-  const [patients, setPatients] = useState(initialSamplePatients);
+  const [patients, setPatients] = useState(() => {
+    const cached = localStorage.getItem('hms_patients_cache');
+    return cached ? JSON.parse(cached) : initialSamplePatients;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
 
-  // Filter patients by search string
+  const fetchPatients = async () => {
+    try {
+      const res = await patientService.getPatients(searchTerm);
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setPatients(res.data);
+        localStorage.setItem('hms_patients_cache', JSON.stringify(res.data));
+      }
+    } catch (err) {
+      console.warn('API fetch warning, retaining local cache:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients();
+  }, [searchTerm]);
+
   const filteredPatients = patients.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -39,55 +57,41 @@ export default function Patients() {
     setIsModalOpen(true);
   };
 
-  const handleSavePatient = (formData) => {
+  const handleSavePatient = async (formData) => {
     if (selectedPatient) {
       // Update existing patient
-      setPatients(
-        patients.map((p) =>
-          p.id === selectedPatient.id
-            ? {
-                ...p,
-                name: `${formData.firstName} ${formData.lastName}`,
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                email: formData.email,
-                phone: formData.phone,
-                dob: formData.dob,
-                gender: formData.gender,
-                bloodGroup: formData.bloodGroup,
-                emergencyContact: formData.emergencyContact,
-                address: formData.address,
-              }
-            : p
-        )
-      );
+      try {
+        const res = await patientService.updatePatient(selectedPatient.id, formData);
+        if (res.success) {
+          await fetchPatients();
+          setIsModalOpen(false);
+        }
+      } catch (err) {
+        throw new Error(err.data?.message || err.message || 'Failed to update patient profile.');
+      }
     } else {
-      // Add new patient
-      const newPatient = {
-        id: Date.now(),
-        mrn: `PAT-2026-${Math.floor(100 + Math.random() * 900)}`,
-        name: `${formData.firstName} ${formData.lastName}`,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        dob: formData.dob,
-        gender: formData.gender,
-        bloodGroup: formData.bloodGroup,
-        emergencyContact: formData.emergencyContact,
-        address: formData.address,
-        isActive: true,
-      };
-      setPatients([newPatient, ...patients]);
+      // Add new patient via API
+      try {
+        const res = await patientService.createPatient(formData);
+        if (res.success) {
+          await fetchPatients();
+          setIsModalOpen(false);
+        }
+      } catch (err) {
+        throw new Error(err.data?.message || err.message || 'Failed to register patient.');
+      }
     }
-
-    setIsModalOpen(false);
   };
 
-  const handleToggleActive = (id) => {
-    setPatients(
-      patients.map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p))
-    );
+  const handleToggleActive = async (id) => {
+    try {
+      await patientService.deactivatePatient(id);
+      await fetchPatients();
+    } catch (err) {
+      setPatients(
+        patients.map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p))
+      );
+    }
   };
 
   return (
@@ -184,3 +188,4 @@ export default function Patients() {
     </div>
   );
 }
+

@@ -16,17 +16,23 @@ const notFound = (req, res, _next) => {
 // Global Error Handler: Catches all errors passed via next(err)
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, _req, res, _next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  // If res.statusCode was not explicitly set to a 4xx status, check error type
+  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
 
-  console.error(`[API ERROR] ${err.stack || err.message}`);
+  // Postgres constraint & validation errors: 23505 (unique), 23502 (not null), 22P02 (invalid input syntax), 23503 (FK)
+  if (err.code === '23505' || err.code === '23502' || err.code === '22P02' || err.name === 'ValidationError') {
+    statusCode = 400;
+  }
+
+  console.error(`[API ERROR] Status ${statusCode} - ${err.stack || err.message}`);
 
   res.status(statusCode).json({
     success: false,
-    message: err.message || 'Internal Server Error',
-    // Only include stack trace in development mode for debugging
+    message: err.message || 'Validation failed. Please check your inputs.',
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
   });
 };
+
 
 module.exports = {
   notFound,

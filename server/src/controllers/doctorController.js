@@ -6,6 +6,12 @@
 const asyncHandler = require('../middleware/asyncHandler');
 const db = require('../db');
 const bcrypt = require('bcryptjs');
+const {
+  isValidName,
+  isValidEmail,
+  isValidPhone,
+  isValidAmount,
+} = require('../utils/validators');
 
 // @desc    Get all doctors with department & schedule details
 // @route   GET /api/doctors
@@ -139,7 +145,35 @@ exports.createDoctor = asyncHandler(async (req, res) => {
 
   if (!firstName || !lastName || !email || !specialization || !qualification) {
     res.status(400);
-    throw new Error('Please provide required fields (firstName, lastName, email, specialization, qualification).');
+    throw new Error('Please provide required fields (First Name, Last Name, Email, Specialization, Qualification).');
+  }
+
+  // Name Validation
+  if (!isValidName(firstName)) {
+    res.status(400);
+    throw new Error('First Name must contain only alphabetic characters, spaces, or hyphens (2-50 characters).');
+  }
+  if (!isValidName(lastName)) {
+    res.status(400);
+    throw new Error('Last Name must contain only alphabetic characters, spaces, or hyphens (2-50 characters).');
+  }
+
+  // Email Validation
+  if (!isValidEmail(email)) {
+    res.status(400);
+    throw new Error('Please provide a valid email address.');
+  }
+
+  // Phone Validation
+  if (phone && !isValidPhone(phone)) {
+    res.status(400);
+    throw new Error('Please provide a valid phone number (7-15 digits).');
+  }
+
+  // Fee Validation
+  if (consultationFee !== undefined && !isValidAmount(consultationFee)) {
+    res.status(400);
+    throw new Error('Consultation fee must be a non-negative number.');
   }
 
   // Check email collision
@@ -157,7 +191,7 @@ exports.createDoctor = asyncHandler(async (req, res) => {
     `INSERT INTO users (email, password_hash, role, first_name, last_name, phone)
      VALUES ($1, $2, 'DOCTOR', $3, $4, $5)
      RETURNING id`,
-    [email.toLowerCase(), passwordHash, firstName, lastName, phone || null]
+    [email.toLowerCase(), passwordHash, firstName.trim(), lastName.trim(), phone ? phone.trim() : null]
   );
 
   const userId = userResult.rows[0].id;
@@ -167,7 +201,7 @@ exports.createDoctor = asyncHandler(async (req, res) => {
     `INSERT INTO doctors (user_id, department_id, specialization, qualification, consultation_fee, bio)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id, specialization, qualification, consultation_fee, bio, created_at`,
-    [userId, departmentId ? parseInt(departmentId, 10) : null, specialization, qualification, consultationFee ? parseFloat(consultationFee) : 100.00, bio || null]
+    [userId, departmentId ? parseInt(departmentId, 10) : null, specialization.trim(), qualification.trim(), consultationFee ? parseFloat(consultationFee) : 100.00, bio ? bio.trim() : null]
   );
 
   const doc = doctorResult.rows[0];
@@ -178,10 +212,10 @@ exports.createDoctor = asyncHandler(async (req, res) => {
     data: {
       id: doc.id,
       userId,
-      name: `Dr. ${firstName} ${lastName}`,
-      firstName,
-      lastName,
-      email,
+      name: `Dr. ${firstName.trim()} ${lastName.trim()}`,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.toLowerCase(),
       phone,
       specialization: doc.specialization,
       qualification: doc.qualification,
@@ -191,6 +225,7 @@ exports.createDoctor = asyncHandler(async (req, res) => {
     },
   });
 });
+
 
 // @desc    Update doctor profile
 // @route   PUT /api/doctors/:id
