@@ -55,10 +55,7 @@ const initialSampleDoctors = [
 ];
 
 export default function Doctors() {
-  const [doctors, setDoctors] = useState(() => {
-    const cached = localStorage.getItem('hms_doctors_cache');
-    return cached ? JSON.parse(cached) : initialSampleDoctors;
-  });
+  const [doctors, setDoctors] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -66,19 +63,20 @@ export default function Doctors() {
 
   const fetchDoctors = async () => {
     try {
+      localStorage.removeItem('hms_doctors_cache');
       const res = await doctorService.getDoctors();
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res.success && Array.isArray(res.data)) {
         setDoctors(res.data);
-        localStorage.setItem('hms_doctors_cache', JSON.stringify(res.data));
       }
     } catch (err) {
-      console.warn('API fetch warning, retaining local cache:', err.message);
+      console.warn('API fetch warning:', err.message);
     }
   };
 
   useEffect(() => {
     fetchDoctors();
   }, []);
+
 
   const filteredDoctors = doctors.filter((doc) => {
     const matchesSearch =

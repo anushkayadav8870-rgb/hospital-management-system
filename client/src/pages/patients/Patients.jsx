@@ -16,29 +16,28 @@ const initialSamplePatients = [
 ];
 
 export default function Patients() {
-  const [patients, setPatients] = useState(() => {
-    const cached = localStorage.getItem('hms_patients_cache');
-    return cached ? JSON.parse(cached) : initialSamplePatients;
-  });
+  const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
 
   const fetchPatients = async () => {
     try {
+      // Clear legacy localStorage cache to prevent stale unvalidated mock entries
+      localStorage.removeItem('hms_patients_cache');
       const res = await patientService.getPatients(searchTerm);
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res.success && Array.isArray(res.data)) {
         setPatients(res.data);
-        localStorage.setItem('hms_patients_cache', JSON.stringify(res.data));
       }
     } catch (err) {
-      console.warn('API fetch warning, retaining local cache:', err.message);
+      console.warn('API fetch warning:', err.message);
     }
   };
 
   useEffect(() => {
     fetchPatients();
   }, [searchTerm]);
+
 
   const filteredPatients = patients.filter(
     (p) =>
