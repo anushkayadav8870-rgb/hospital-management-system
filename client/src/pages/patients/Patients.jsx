@@ -9,23 +9,42 @@ import Badge from '../../components/common/Badge';
 import PatientModal from '../../components/patients/PatientModal';
 import { patientService } from '../../services/patientService';
 
-const initialSamplePatients = [
-  { id: 1, mrn: 'PAT-2026-001', name: 'Eleanor Vance', firstName: 'Eleanor', lastName: 'Vance', dob: '1992-04-14', gender: 'Female', phone: '+1 555-0192', bloodGroup: 'A+', isActive: true },
-  { id: 2, mrn: 'PAT-2026-002', name: 'Marcus Brody', firstName: 'Marcus', lastName: 'Brody', dob: '1974-11-08', gender: 'Male', phone: '+1 555-0144', bloodGroup: 'O+', isActive: true },
-  { id: 3, mrn: 'PAT-2026-003', name: 'Clara Oswald', firstName: 'Clara', lastName: 'Oswald', dob: '1995-11-23', gender: 'Female', phone: '+1 555-0188', bloodGroup: 'B-', isActive: false },
-];
-
 export default function Patients() {
   const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
 
-  const fetchPatients = async () => {
+  useEffect(() => {
+    let isCurrent = true;
+
+    const fetchPatients = async () => {
+      try {
+        localStorage.removeItem('hms_patients_cache');
+        const trimmed = searchTerm.trim();
+        const res = await patientService.getPatients(trimmed);
+        if (isCurrent && res.success && Array.isArray(res.data)) {
+          setPatients(res.data);
+        }
+      } catch (err) {
+        if (isCurrent) {
+          console.warn('API fetch warning:', err.message);
+        }
+      }
+    };
+
+    fetchPatients();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [searchTerm]);
+
+  const loadPatients = async () => {
     try {
-      // Clear legacy localStorage cache to prevent stale unvalidated mock entries
       localStorage.removeItem('hms_patients_cache');
-      const res = await patientService.getPatients(searchTerm);
+      const trimmed = searchTerm.trim();
+      const res = await patientService.getPatients(trimmed);
       if (res.success && Array.isArray(res.data)) {
         setPatients(res.data);
       }
@@ -33,18 +52,6 @@ export default function Patients() {
       console.warn('API fetch warning:', err.message);
     }
   };
-
-  useEffect(() => {
-    fetchPatients();
-  }, [searchTerm]);
-
-
-  const filteredPatients = patients.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.mrn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.phone && p.phone.includes(searchTerm))
-  );
 
   const handleOpenAddModal = () => {
     setSelectedPatient(null);
@@ -62,7 +69,7 @@ export default function Patients() {
       try {
         const res = await patientService.updatePatient(selectedPatient.id, formData);
         if (res.success) {
-          await fetchPatients();
+          await loadPatients();
           setIsModalOpen(false);
         }
       } catch (err) {
@@ -73,7 +80,7 @@ export default function Patients() {
       try {
         const res = await patientService.createPatient(formData);
         if (res.success) {
-          await fetchPatients();
+          await loadPatients();
           setIsModalOpen(false);
         }
       } catch (err) {
@@ -85,7 +92,7 @@ export default function Patients() {
   const handleToggleActive = async (id) => {
     try {
       await patientService.deactivatePatient(id);
-      await fetchPatients();
+      await loadPatients();
     } catch (err) {
       setPatients(
         patients.map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p))
@@ -132,14 +139,14 @@ export default function Patients() {
                 </tr>
               </thead>
               <tbody>
-                {filteredPatients.length === 0 ? (
+                {patients.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="text-center" style={{ padding: '24px' }}>
                       No patient records found matching "{searchTerm}".
                     </td>
                   </tr>
                 ) : (
-                  filteredPatients.map((p) => (
+                  patients.map((p) => (
                     <tr key={p.id}>
                       <td style={{ fontWeight: 600 }}>{p.mrn}</td>
                       <td style={{ fontWeight: 600 }}>{p.name}</td>

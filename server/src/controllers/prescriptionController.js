@@ -86,7 +86,7 @@ exports.getPrescriptionById = asyncHandler(async (req, res) => {
 
   const rxResult = await db.query(
     `SELECT pr.id, pr.instructions, pr.created_at,
-            p.id AS patient_id, p.mrn, pu.first_name AS patient_first_name, pu.last_name AS patient_last_name,
+            p.id AS patient_id, p.user_id AS patient_user_id, p.mrn, pu.first_name AS patient_first_name, pu.last_name AS patient_last_name,
             d.id AS doctor_id, d.specialization, du.first_name AS doctor_first_name, du.last_name AS doctor_last_name
      FROM prescriptions pr
      JOIN patients p ON pr.patient_id = p.id
@@ -103,6 +103,12 @@ exports.getPrescriptionById = asyncHandler(async (req, res) => {
   }
 
   const row = rxResult.rows[0];
+
+  // PATIENT role can ONLY view their own prescriptions
+  if (req.user.role === 'PATIENT' && row.patient_user_id !== req.user.id) {
+    res.status(403);
+    throw new Error('Access Forbidden: You are not authorized to view this prescription record.');
+  }
 
   const itemsResult = await db.query(
     `SELECT id, medicine_name, dosage, frequency, duration
@@ -142,7 +148,24 @@ exports.getPrescriptionById = asyncHandler(async (req, res) => {
 // @route   POST /api/prescriptions
 // @access  Private (ADMIN, DOCTOR)
 exports.createPrescription = asyncHandler(async (req, res) => {
-  const { patientId, doctorId, medicalRecordId, instructions, items } = req.body;
+  let { patientId, doctorId, medicalRecordId, instructions, items } = req.body;
+
+  // Validate doctor identity mapping for DOCTOR role
+  if (req.user.role === 'DOCTOR') {
+    const doctorResult = await db.query('SELECT id FROM doctors WHERE user_id = $1', [req.user.id]);
+    if (doctorResult.rows.length === 0) {
+      res.status(403);
+      throw new Error('Access Forbidden: No doctor profile linked to this user account.');
+    }
+
+    const linkedDoctorId = doctorResult.rows[0].id;
+    if (doctorId && parseInt(doctorId, 10) !== linkedDoctorId) {
+      res.status(403);
+      throw new Error("Access Forbidden: Doctors cannot issue prescriptions under another doctor's identity.");
+    }
+    // Bind to authenticated doctor's profile ID
+    doctorId = linkedDoctorId;
+  }
 
   if (!patientId || !doctorId || !items || !Array.isArray(items) || items.length === 0) {
     res.status(400);

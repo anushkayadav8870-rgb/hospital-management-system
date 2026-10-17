@@ -50,9 +50,11 @@ export default function DoctorModal({ isOpen, onClose, onSave, doctor = null }) 
     }
   }, [doctor, isOpen]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -96,7 +98,22 @@ export default function DoctorModal({ isOpen, onClose, onSave, doctor = null }) 
       return;
     }
 
-    onSave(formData);
+    try {
+      setIsSubmitting(true);
+      await onSave({
+        ...formData,
+        email: formData.email.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        phone: formData.phone.trim(),
+        specialization: formData.specialization.trim(),
+        qualification: formData.qualification.trim(),
+      });
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please check inputs.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
@@ -250,8 +267,14 @@ export default function DoctorModal({ isOpen, onClose, onSave, doctor = null }) 
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary">
-                {doctor ? 'Update Profile' : 'Add Doctor'}
+              <Button type="submit" variant="primary" disabled={isSubmitting}>
+                {isSubmitting
+                  ? doctor
+                    ? 'Updating Profile...'
+                    : 'Adding Doctor...'
+                  : doctor
+                  ? 'Update Profile'
+                  : 'Add Doctor'}
               </Button>
             </div>
           </form>

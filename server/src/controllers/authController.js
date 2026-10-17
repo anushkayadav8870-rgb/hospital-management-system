@@ -100,17 +100,29 @@ exports.registerUser = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 exports.loginUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
 
   if (!email || !password) {
     res.status(400);
     throw new Error('Please provide email and password.');
   }
 
+  email = String(email).trim().toLowerCase();
+
+  if (email.length > 255 || password.length > 128) {
+    res.status(400);
+    throw new Error('Input exceeds maximum allowed length.');
+  }
+
+  if (!isValidEmail(email)) {
+    res.status(400);
+    throw new Error('Please provide a valid email address format.');
+  }
+
   // Fetch user including password_hash
   const userResult = await db.query(
     'SELECT id, email, password_hash, role, first_name, last_name, phone, is_active FROM users WHERE email = $1',
-    [email.toLowerCase()]
+    [email]
   );
 
   if (userResult.rows.length === 0) {

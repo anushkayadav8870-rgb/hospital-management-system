@@ -10,7 +10,7 @@ const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
 
 router.use(protect);
-router.get('/dashboard', getDashboardMetrics);
+router.get('/dashboard', authorize('ADMIN', 'DOCTOR'), getDashboardMetrics);
 router.get('/db-viewer', authorize('ADMIN'), getDatabaseViewer);
 
 module.exports = router;

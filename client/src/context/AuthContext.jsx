@@ -9,14 +9,8 @@ import { authService } from '../services/api';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState({
-    id: 1,
-    name: 'Dr. Admin User',
-    role: 'ADMIN',
-    email: 'admin@pulsecare.com',
-    initials: 'AU',
-  });
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Check if token exists on mount and verify profile
   useEffect(() => {
@@ -34,12 +28,21 @@ export function AuthProvider({ children }) {
               email: u.email,
               initials: u.initials,
             });
+          } else {
+            localStorage.removeItem('hms_token');
+            setUser(null);
           }
         })
         .catch(() => {
           // If token invalid or expired, clear storage
           localStorage.removeItem('hms_token');
+          setUser(null);
+        })
+        .finally(() => {
+          setLoading(false);
         });
+    } else {
+      setLoading(false);
     }
   }, []);
 

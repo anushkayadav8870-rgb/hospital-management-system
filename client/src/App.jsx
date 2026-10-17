@@ -18,9 +18,14 @@ import Prescriptions from './pages/prescriptions/Prescriptions';
 import Billing from './pages/billing/Billing';
 import DatabaseViewer from './pages/admin/DatabaseViewer';
 import Login from './pages/auth/Login';
+import ProtectedRoute from './components/layout/ProtectedRoute';
 
-function AuthenticatedLayout({ children }) {
-  return <Layout>{children}</Layout>;
+function AuthenticatedLayout({ children, allowedRoles }) {
+  return (
+    <ProtectedRoute allowedRoles={allowedRoles}>
+      <Layout>{children}</Layout>
+    </ProtectedRoute>
+  );
 }
 
 export default function App() {
@@ -98,7 +103,7 @@ export default function App() {
           <Route
             path="/db-viewer"
             element={
-              <AuthenticatedLayout>
+              <AuthenticatedLayout allowedRoles={['ADMIN']}>
                 <DatabaseViewer />
               </AuthenticatedLayout>
             }

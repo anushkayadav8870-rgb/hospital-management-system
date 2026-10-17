@@ -16,7 +16,7 @@
 // - useAuth() — reads the logged-in user from our AuthContext.
 // =============================================
 
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 // -----------------------------------------------
@@ -42,16 +42,15 @@ const adminItems = [
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const location = useLocation();
 
   return (
     <aside className="sidebar">
       {/* ---- Hospital Logo ---- */}
       <div className="sidebar-logo">
         <div className="logo-mark">
-          <div className="logo-icon">P</div>
+          <div className="logo-icon">M</div>
           <div className="logo-text">
-            <h1>PulseCare</h1>
+            <h1>MediCore</h1>
             <p>Hospital System</p>
           </div>
         </div>

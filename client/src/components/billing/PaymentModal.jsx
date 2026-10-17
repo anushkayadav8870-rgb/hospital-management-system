@@ -11,10 +11,11 @@ export default function PaymentModal({ isOpen, onClose, onSave, bill = null }) {
   const [paymentMethod, setPaymentMethod] = useState('Credit Card');
   const [transactionRef, setTransactionRef] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen || !bill) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -29,12 +30,21 @@ export default function PaymentModal({ isOpen, onClose, onSave, bill = null }) {
       return;
     }
 
-    onSave({
-      billId: bill.id,
-      amountPaid: parsedAmount,
-      paymentMethod,
-      transactionRef: transactionRef || `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-    });
+    try {
+      setIsSubmitting(true);
+      await onSave({
+        billId: bill.id,
+        amountPaid: parsedAmount,
+        paymentMethod,
+        transactionRef: transactionRef || `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+      });
+      setAmountPaid('');
+      setTransactionRef('');
+    } catch (err) {
+      setError(err.data?.message || err.message || 'Failed to record payment.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -127,11 +137,11 @@ export default function PaymentModal({ isOpen, onClose, onSave, bill = null }) {
             </div>
 
             <div className="flex justify-between items-center mt-6">
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary">
-                Record Payment
+              <Button type="submit" variant="primary" disabled={isSubmitting}>
+                {isSubmitting ? 'Recording...' : 'Record Payment'}
               </Button>
             </div>
           </form>

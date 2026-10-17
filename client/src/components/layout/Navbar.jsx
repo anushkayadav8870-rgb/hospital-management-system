@@ -30,7 +30,7 @@ export default function Navbar() {
   const { user } = useAuth();
 
   // Look up title for current path, fallback to generic
-  const page = pageTitles[pathname] || { title: 'PulseCare HMS', subtitle: '' };
+  const page = pageTitles[pathname] || { title: 'MediCore HMS', subtitle: '' };
 
   return (
     <header className="navbar">

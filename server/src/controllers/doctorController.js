@@ -158,8 +158,9 @@ exports.createDoctor = asyncHandler(async (req, res) => {
     throw new Error('Last Name must contain only alphabetic characters, spaces, or hyphens (2-50 characters).');
   }
 
-  // Email Validation
-  if (!isValidEmail(email)) {
+  // Email Validation & Normalization
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  if (!isValidEmail(normalizedEmail)) {
     res.status(400);
     throw new Error('Please provide a valid email address.');
   }
@@ -177,7 +178,7 @@ exports.createDoctor = asyncHandler(async (req, res) => {
   }
 
   // Check email collision
-  const existing = await db.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+  const existing = await db.query('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
   if (existing.rows.length > 0) {
     res.status(400);
     throw new Error('An account with this email address already exists.');
@@ -191,7 +192,7 @@ exports.createDoctor = asyncHandler(async (req, res) => {
     `INSERT INTO users (email, password_hash, role, first_name, last_name, phone)
      VALUES ($1, $2, 'DOCTOR', $3, $4, $5)
      RETURNING id`,
-    [email.toLowerCase(), passwordHash, firstName.trim(), lastName.trim(), phone ? phone.trim() : null]
+    [normalizedEmail, passwordHash, firstName.trim(), lastName.trim(), phone ? phone.trim() : null]
   );
 
   const userId = userResult.rows[0].id;
@@ -215,7 +216,7 @@ exports.createDoctor = asyncHandler(async (req, res) => {
       name: `Dr. ${firstName.trim()} ${lastName.trim()}`,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       phone,
       specialization: doc.specialization,
       qualification: doc.qualification,

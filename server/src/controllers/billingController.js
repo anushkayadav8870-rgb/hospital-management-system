@@ -100,6 +100,26 @@ exports.createBill = asyncHandler(async (req, res) => {
     throw new Error('Please provide patientId and at least one bill line item.');
   }
 
+  // Verify patient exists
+  const patientCheck = await db.query('SELECT id FROM patients WHERE id = $1', [patientId]);
+  if (patientCheck.rows.length === 0) {
+    res.status(404);
+    throw new Error(`Patient with ID ${patientId} not found.`);
+  }
+
+  // If appointmentId is provided, verify it exists and belongs to the specified patient
+  if (appointmentId) {
+    const aptCheck = await db.query('SELECT id, patient_id FROM appointments WHERE id = $1', [appointmentId]);
+    if (aptCheck.rows.length === 0) {
+      res.status(404);
+      throw new Error(`Appointment with ID ${appointmentId} not found.`);
+    }
+    if (aptCheck.rows[0].patient_id !== parseInt(patientId, 10)) {
+      res.status(400);
+      throw new Error('Appointment does not belong to the specified patient.');
+    }
+  }
+
   const client = await db.pool.connect();
 
   try {
@@ -171,6 +191,16 @@ exports.recordPayment = asyncHandler(async (req, res) => {
   }
 
   const bill = billResult.rows[0];
+  const totalAmount = parseFloat(bill.total_amount);
+  const currentPaid = parseFloat(bill.paid_amount || 0);
+  const remainingDue = totalAmount - currentPaid;
+  const paymentVal = parseFloat(amountPaid);
+
+  if (paymentVal > remainingDue + 0.001) {
+    res.status(400);
+    throw new Error(`Payment amount ($${paymentVal.toFixed(2)}) cannot exceed remaining balance ($${remainingDue.toFixed(2)}).`);
+  }
+
   const client = await db.pool.connect();
 
   try {

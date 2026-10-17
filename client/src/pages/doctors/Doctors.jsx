@@ -7,52 +7,9 @@ import { useState, useEffect } from 'react';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import DoctorModal from '../../components/doctors/DoctorModal';
+import DoctorScheduleModal from '../../components/doctors/DoctorScheduleModal';
+import DeactivateDoctorModal from '../../components/doctors/DeactivateDoctorModal';
 import { doctorService } from '../../services/doctorService';
-
-const initialSampleDoctors = [
-  {
-    id: 1,
-    name: 'Dr. Sarah Jenkins',
-    firstName: 'Sarah',
-    lastName: 'Jenkins',
-    email: 'dr.jenkins@pulsecare.com',
-    phone: '+1 555-0101',
-    specialization: 'Cardiovascular Disease',
-    qualification: 'MD, FACC',
-    consultationFee: 120.00,
-    department: { id: 1, name: 'Cardiology', locationFloor: 'Floor 3 - Wing A' },
-    status: 'Available',
-    isActive: true,
-  },
-  {
-    id: 2,
-    name: 'Dr. Robert Chen',
-    firstName: 'Robert',
-    lastName: 'Chen',
-    email: 'dr.chen@pulsecare.com',
-    phone: '+1 555-0102',
-    specialization: 'Pediatric Emergency',
-    qualification: 'MD, FAAP',
-    consultationFee: 90.00,
-    department: { id: 2, name: 'Pediatrics', locationFloor: 'Floor 2 - Wing B' },
-    status: 'In Consultation',
-    isActive: true,
-  },
-  {
-    id: 3,
-    name: 'Dr. Emily Watson',
-    firstName: 'Emily',
-    lastName: 'Watson',
-    email: 'dr.watson@pulsecare.com',
-    phone: '+1 555-0103',
-    specialization: 'Neurology & Brain Health',
-    qualification: 'MD, PhD',
-    consultationFee: 150.00,
-    department: { id: 3, name: 'Neurology', locationFloor: 'Floor 4 - Wing C' },
-    status: 'On Leave',
-    isActive: true,
-  },
-];
 
 export default function Doctors() {
   const [doctors, setDoctors] = useState([]);
@@ -60,6 +17,14 @@ export default function Doctors() {
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleDoctor, setScheduleDoctor] = useState(null);
+  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
+  const [doctorToDeactivate, setDoctorToDeactivate] = useState(null);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [deactivateError, setDeactivateError] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState(null);
+  const [feedbackError, setFeedbackError] = useState(null);
 
   const fetchDoctors = async () => {
     try {
@@ -96,67 +61,77 @@ export default function Doctors() {
     setIsModalOpen(true);
   };
 
+  const handleOpenScheduleModal = (doctor) => {
+    setScheduleDoctor(doctor);
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleOpenDeactivateModal = (doctor) => {
+    setDoctorToDeactivate(doctor);
+    setDeactivateError('');
+    setIsDeactivateModalOpen(true);
+  };
+
+  const handleCloseDeactivateModal = () => {
+    if (isDeactivating) return;
+    setIsDeactivateModalOpen(false);
+    setDoctorToDeactivate(null);
+    setDeactivateError('');
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!doctorToDeactivate || isDeactivating) return;
+    setIsDeactivating(true);
+    setDeactivateError('');
+    setFeedbackMessage(null);
+    setFeedbackError(null);
+
+    try {
+      const res = await doctorService.deactivateDoctor(doctorToDeactivate.id);
+      if (res.success) {
+        setFeedbackMessage(
+          `Dr. ${doctorToDeactivate.name || `${doctorToDeactivate.firstName} ${doctorToDeactivate.lastName}`} has been deactivated successfully. Historical appointments and records remain preserved.`
+        );
+        setIsDeactivateModalOpen(false);
+        setDoctorToDeactivate(null);
+        await fetchDoctors();
+      } else {
+        setDeactivateError(res.message || 'Failed to deactivate doctor account.');
+      }
+    } catch (err) {
+      const rawMessage = err.data?.message || err.message;
+      const normalizedMessage =
+        rawMessage === 'Failed to fetch'
+          ? 'Unable to connect to the hospital server. Please check your connection and try again.'
+          : rawMessage || 'Failed to deactivate doctor account.';
+      setDeactivateError(normalizedMessage);
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
   const handleSaveDoctor = async (formData) => {
     if (selectedDoctor) {
       try {
         const res = await doctorService.updateDoctor(selectedDoctor.id, formData);
         if (res.success) {
           await fetchDoctors();
+          setIsModalOpen(false);
         }
       } catch (err) {
-        console.warn('Update via API failed, updating local state:', err.message);
-        const updatedList = doctors.map((d) =>
-          d.id === selectedDoctor.id
-            ? {
-                ...d,
-                name: `Dr. ${formData.firstName} ${formData.lastName}`,
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                email: formData.email,
-                phone: formData.phone,
-                specialization: formData.specialization,
-                qualification: formData.qualification,
-                consultationFee: parseFloat(formData.consultationFee),
-              }
-            : d
-        );
-        setDoctors(updatedList);
-        localStorage.setItem('hms_doctors_cache', JSON.stringify(updatedList));
+        throw new Error(err.data?.message || err.message || 'Failed to update doctor profile.');
       }
     } else {
-      const deptNames = { '1': 'Cardiology', '2': 'Pediatrics', '3': 'Neurology', '4': 'Orthopedics' };
       try {
         const res = await doctorService.createDoctor(formData);
         if (res.success) {
           await fetchDoctors();
+          setIsModalOpen(false);
         }
       } catch (err) {
-        console.warn('Create via API failed, saving to local persistent cache:', err.message);
-        const newDoc = {
-          id: Date.now(),
-          name: `Dr. ${formData.firstName} ${formData.lastName}`,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          specialization: formData.specialization,
-          qualification: formData.qualification,
-          consultationFee: parseFloat(formData.consultationFee),
-          department: {
-            id: parseInt(formData.departmentId, 10),
-            name: deptNames[formData.departmentId] || 'Cardiology',
-            locationFloor: 'Floor 3',
-          },
-          status: 'Available',
-          isActive: true,
-        };
-        const updatedList = [newDoc, ...doctors];
-        setDoctors(updatedList);
-        localStorage.setItem('hms_doctors_cache', JSON.stringify(updatedList));
+        throw new Error(err.data?.message || err.message || 'Failed to register doctor.');
       }
     }
-
-    setIsModalOpen(false);
   };
 
   return (
@@ -170,6 +145,17 @@ export default function Doctors() {
           + Add New Doctor
         </Button>
       </div>
+
+      {feedbackMessage && (
+        <div className="alert alert-success" style={{ marginBottom: '16px' }}>
+          ✓ {feedbackMessage}
+        </div>
+      )}
+      {feedbackError && (
+        <div className="alert alert-danger" style={{ marginBottom: '16px' }}>
+          ✕ {feedbackError}
+        </div>
+      )}
 
       {/* Search & Filter Toolbar */}
       <div className="card mb-6" style={{ marginBottom: '24px' }}>
@@ -242,12 +228,23 @@ export default function Doctors() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center mt-4">
-                  <Button variant="ghost" size="sm" onClick={() => handleOpenEditModal(doc)}>
-                    ✏️ Edit Profile
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    📅 Schedule
+                <div className="flex justify-between items-center mt-4 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleOpenEditModal(doc)}>
+                      ✏️ Edit
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleOpenScheduleModal(doc)}>
+                      📅 Schedule
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenDeactivateModal(doc)}
+                    style={{ color: 'var(--color-danger)' }}
+                    title="Deactivate Doctor"
+                  >
+                    🚫 Deactivate
                   </Button>
                 </div>
               </div>
@@ -262,6 +259,26 @@ export default function Doctors() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveDoctor}
         doctor={selectedDoctor}
+      />
+
+      {/* Doctor Schedule Modal */}
+      <DoctorScheduleModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => {
+          setIsScheduleModalOpen(false);
+          setScheduleDoctor(null);
+        }}
+        doctor={scheduleDoctor}
+      />
+
+      {/* Confirm Doctor Deactivation Modal */}
+      <DeactivateDoctorModal
+        isOpen={isDeactivateModalOpen}
+        onClose={handleCloseDeactivateModal}
+        onConfirm={handleConfirmDeactivate}
+        doctor={doctorToDeactivate}
+        isSubmitting={isDeactivating}
+        error={deactivateError}
       />
     </div>
   );

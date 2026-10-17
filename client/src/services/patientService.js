@@ -6,9 +6,17 @@
 import { apiRequest } from './api';
 
 export const patientService = {
-  getPatients: (search = '') => {
-    const query = search ? `?search=${encodeURIComponent(search)}` : '';
-    return apiRequest(`/patients${query}`);
+  getPatients: (params = {}) => {
+    if (typeof params === 'string') {
+      params = { search: params };
+    }
+    const queryParams = new URLSearchParams();
+    if (params.search) queryParams.append('search', params.search);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.page) queryParams.append('page', params.page);
+
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return apiRequest(`/patients${queryString}`);
   },
 
   getPatientById: (id) => apiRequest(`/patients/${id}`),

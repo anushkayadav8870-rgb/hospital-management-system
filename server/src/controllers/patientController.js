@@ -39,14 +39,16 @@ exports.getPatients = asyncHandler(async (req, res) => {
   const queryParams = [];
 
   // Filter by search string if provided
-  if (search) {
+  const trimmedSearch = typeof search === 'string' ? search.trim() : '';
+  if (trimmedSearch) {
     queryText += `
       WHERE u.first_name ILIKE $1 
          OR u.last_name ILIKE $1 
+         OR CONCAT(u.first_name, ' ', u.last_name) ILIKE $1
          OR p.mrn ILIKE $1 
          OR u.phone ILIKE $1
     `;
-    queryParams.push(`%${search}%`);
+    queryParams.push(`%${trimmedSearch}%`);
   }
 
   queryText += ` ORDER BY p.created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
@@ -179,50 +181,64 @@ exports.createPatient = asyncHandler(async (req, res) => {
     }
   }
 
-  // 1. Create associated user account for patient login
-  const generatedEmail = email || `patient_${Date.now()}@pulsecare.local`;
-  const defaultPasswordHash = '$2b$10$By9Nsp9DIt2tfCgjP1gye.tk.Y55ElAah4K7Oyh0B1ICeWPr1BNWS'; // password123
+  // 1. Acquire dedicated client from pool for atomic transaction
+  const client = await db.pool.connect();
 
-  const userResult = await db.query(
-    `INSERT INTO users (email, password_hash, role, first_name, last_name, phone)
-     VALUES ($1, $2, 'PATIENT', $3, $4, $5)
-     RETURNING id`,
-    [generatedEmail.toLowerCase(), defaultPasswordHash, firstName.trim(), lastName.trim(), phone ? phone.trim() : null]
-  );
+  try {
+    await client.query('BEGIN');
 
-  const userId = userResult.rows[0].id;
-  const mrn = generateMRN();
+    const generatedEmail = email || `patient_${Date.now()}@pulsecare.local`;
+    const defaultPasswordHash = '$2b$10$By9Nsp9DIt2tfCgjP1gye.tk.Y55ElAah4K7Oyh0B1ICeWPr1BNWS'; // password123
 
-  // 2. Insert patient record
-  const patientResult = await db.query(
-    `INSERT INTO patients (user_id, mrn, date_of_birth, gender, blood_group, emergency_contact, address)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING id, mrn, date_of_birth, gender, blood_group, emergency_contact, address, created_at`,
-    [userId, mrn, dob, gender, bloodGroup || 'Unknown', emergencyContact ? emergencyContact.trim() : null, address ? address.trim() : null]
-  );
+    // Insert associated user account
+    const userResult = await client.query(
+      `INSERT INTO users (email, password_hash, role, first_name, last_name, phone)
+       VALUES ($1, $2, 'PATIENT', $3, $4, $5)
+       RETURNING id`,
+      [generatedEmail.toLowerCase(), defaultPasswordHash, firstName.trim(), lastName.trim(), phone ? phone.trim() : null]
+    );
 
-  const p = patientResult.rows[0];
+    const userId = userResult.rows[0].id;
+    const mrn = generateMRN();
 
-  res.status(201).json({
-    success: true,
-    message: 'Patient registered successfully.',
-    data: {
-      id: p.id,
-      mrn: p.mrn,
-      name: `${firstName.trim()} ${lastName.trim()}`,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: generatedEmail,
-      phone,
-      dob: p.date_of_birth,
-      gender: p.gender,
-      bloodGroup: p.blood_group,
-      emergencyContact: p.emergency_contact,
-      address: p.address,
-      isActive: true,
-      createdAt: p.created_at,
-    },
-  });
+    // Insert patient record referencing user_id
+    const patientResult = await client.query(
+      `INSERT INTO patients (user_id, mrn, date_of_birth, gender, blood_group, emergency_contact, address)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, mrn, date_of_birth, gender, blood_group, emergency_contact, address, created_at`,
+      [userId, mrn, dob, gender, bloodGroup || 'Unknown', emergencyContact ? emergencyContact.trim() : null, address ? address.trim() : null]
+    );
+
+    await client.query('COMMIT');
+
+    const p = patientResult.rows[0];
+
+    res.status(201).json({
+      success: true,
+      message: 'Patient registered successfully.',
+      data: {
+        id: p.id,
+        mrn: p.mrn,
+        name: `${firstName.trim()} ${lastName.trim()}`,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: generatedEmail,
+        phone,
+        dob: p.date_of_birth,
+        gender: p.gender,
+        bloodGroup: p.blood_group,
+        emergencyContact: p.emergency_contact,
+        address: p.address,
+        isActive: true,
+        createdAt: p.created_at,
+      },
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 
